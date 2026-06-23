@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostgreSQL Student Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 p-8">
+    <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+        <h1 class="text-2xl font-bold mb-6 text-slate-800 text-center">Student Management (PostgreSQL)</h1>
+
+        <form id="studentForm" class="mb-6 space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700">Student Name</label>
+                <input type="text" id="name" required class="w-full mt-1 p-2 border border-slate-300 rounded-md focus:ring focus:ring-blue-300 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700">Grade</label>
+                <input type="text" id="grade" required class="w-full mt-1 p-2 border border-slate-300 rounded-md focus:ring focus:ring-blue-300 outline-none" placeholder="e.g. A+, 12th Grade">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white font-medium p-2 rounded-md hover:bg-blue-700 transition">Add Student</button>
+        </form>
+
+        <hr class="mb-6 border-slate-200">
+
+        <h2 class="text-xl font-bold mb-4 text-slate-700">All Registered Students</h2>
+        <ul id="studentList" class="space-y-2"></ul>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/students";
+
+        // Fetch and render students live from the database
+        async function fetchStudents() {
+            try {
+                const res = await fetch(API_URL);
+                const students = await res.json();
+                const list = document.getElementById('studentList');
+                list.innerHTML = '';
+
+                if (students.length === 0) {
+                    list.innerHTML = `<li class="text-slate-400 text-sm text-center py-4">No students found in PostgreSQL.</li>`;
+                    return;
+                }
+
+                students.forEach(student => {
+                    list.innerHTML += `
+                        <li class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <div>
+                                <span class="font-semibold text-slate-800">${student.name}</span> 
+                                <span class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-1 rounded-full ml-2">${student.grade}</span>
+                            </div>
+                            <button onclick="editStudent(${student.id}, '${student.name}', '${student.grade}')" class="text-sm font-medium text-amber-600 hover:text-amber-700 transition">Edit Grade</button>
+                        </li>
+                    `;
+                });
+            } catch (err) {
+                console.error("Database connection issue: ", err);
+            }
+        }
+
+        // Add a new student record
+        document.getElementById('studentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const grade = document.getElementById('grade').value;
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, grade })
+            });
+
+            document.getElementById('studentForm').reset();
+            fetchStudents();
+        });
+
+        // Edit an existing student record via PUT
+        async function editStudent(id, currentName, currentGrade) {
+            const newGrade = prompt(`Enter new grade for ${currentName}:`, currentGrade);
+            if (newGrade === null || newGrade.trim() === "") return;
+
+            await fetch(`${API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: currentName, grade: newGrade })
+            });
+
+            fetchStudents();
+        }
+
+        // Load the initial dataset on page load
+        fetchStudents();
+    </script>
+</body>
+</html>
